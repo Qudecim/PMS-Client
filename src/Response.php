@@ -19,6 +19,11 @@ class Response {
         return new self($item['i'], $item['v'], $item['e']);
     }
 
+    public static function createError(string $id, int $error): self
+    {
+        return new self($id, '', $error);
+    }
+
     public function getId(): string
     {
         return $this->id;
