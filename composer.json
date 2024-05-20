@@ -1,0 +1,23 @@
+{
+    "name": "qudecim/pms-client",
+    "description": "Client for persistent memory storage",
+    "keywords": ["pms"],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Yevgeniy Zaichenko",
+            "email": "hackpsy@yandex.ru"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "PMC\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=8.0",
+        "cboden/ratchet": "^0.4",
+        "textalk/websocket": "^1.5"
+    }
+}
