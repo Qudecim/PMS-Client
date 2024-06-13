@@ -26,6 +26,13 @@ echo $response->getValue() . PHP_EOL;
 $response = $pms->pull('list_key1');
 echo implode(',', $response->getItems()) . PHP_EOL;
 
+$pms->increment('inc_key1');
+$pms->increment('inc_key1');
+$pms->increment('inc_key1');
+$pms->increment('inc_key1');
+echo $pms->increment('inc_key1')->getIncrement() . PHP_EOL;
+
 $time_end = microtime(true);
 $execution_time = $time_end - $time_start;
 echo $execution_time . PHP_EOL;
+
