@@ -2,6 +2,7 @@
 
 namespace PMS;
 
+use Exception;
 use WebSocket\Client as WebClient;
 
 class Client {
@@ -23,28 +24,32 @@ class Client {
         return new self($connection, $idGenerator);
     }
 
+    /**
+     * @throws Exception
+     */
     public function get(string $key): Response {
-        $request = new Request($this->idGenerator->generate(), 'g', $key, '');
-        $this->send($request);
-
-        if (isset($this->data[$request->getId()])) {
-            return $this->data[$request->getId()];
-        }
-
-        if ($this->wait($request->getId())) {
-            $response = $this->data[$request->getId()];
-            unset($this->data[$request->getId()]);
-            return $response;
-        }
-
-        throw new \Exception('1');
+        return $this->makeQuery($key, 'g');
     }
 
     public function set(string $key, string $value): void {
         $request = new Request($this->idGenerator->generate(), 's', $key, $value);
         try {
             $this->connection->send($request->asString());
-        } catch (\Exception $e) {}
+        } catch (Exception $e) {}
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function increment(string $key): Response {
+        return $this->makeQuery($key, 'i');
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function decrement(string $key): Response {
+        return $this->makeQuery($key, 'd');
     }
 
     public function push(string $key, string $itemKey): Response {
@@ -61,7 +66,7 @@ class Client {
             return $response;
         }
 
-        throw new \Exception('1');
+        throw new Exception('1');
     }
 
     public function pull(string $key): Response {
@@ -78,7 +83,7 @@ class Client {
              return $response;
          }
 
-         throw new \Exception('1');
+         throw new Exception('1');
     }
 
     private function wait(string $id): bool
@@ -106,22 +111,25 @@ class Client {
         return $response;
     }
 
-    //    private function getResponse($request, $responseString): Response
-    //    {
-    //        if (!is_string($responseString)) {
-    //            return Response::createError($request->getId(), Errors::ERROR_BODY_INCORRECT);
-    //        }
-    //
-    //        $rBody = json_decode($responseString, true);
-    //        if ($rBody === null) {
-    //            return Response::createError($request->getId(), Errors::ERROR_BODY_INCORRECT_DECODE);
-    //        }
-    //
-    //        $response = Response::createFromArray($rBody);
-    //        if ($request->getId() !== $response->getId()) {
-    //            return Response::createError($request->getId(), Errors::ERROR_DIFFERENT_ANSWER);
-    //        }
-    //
-    //        return $response;
-    //    }
+    /**
+     * @throws Exception
+     */
+    private function makeQuery(string $key, string $method): Response
+    {
+        $request = new Request($this->idGenerator->generate(), $method, $key, '');
+        $this->send($request);
+
+        if (isset($this->data[$request->getId()])) {
+            return $this->data[$request->getId()];
+        }
+
+        if ($this->wait($request->getId())) {
+            $response = $this->data[$request->getId()];
+            unset($this->data[$request->getId()]);
+            return $response;
+        }
+
+        throw new Exception('1');
+    }
+
 }
