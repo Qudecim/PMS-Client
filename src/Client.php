@@ -3,6 +3,7 @@
 namespace PMS;
 
 use Exception;
+use WebSocket\BadOpcodeException;
 use WebSocket\Client as WebClient;
 
 class Client {
@@ -24,9 +25,6 @@ class Client {
         return new self($connection, $idGenerator);
     }
 
-    /**
-     * @throws Exception
-     */
     public function get(string $key): Response {
         return $this->makeQuery($key, 'g');
     }
@@ -38,52 +36,20 @@ class Client {
         } catch (Exception $e) {}
     }
 
-    /**
-     * @throws Exception
-     */
     public function increment(string $key): Response {
         return $this->makeQuery($key, 'i');
     }
 
-    /**
-     * @throws Exception
-     */
     public function decrement(string $key): Response {
         return $this->makeQuery($key, 'd');
     }
 
     public function push(string $key, string $itemKey): Response {
-        $request = new Request($this->idGenerator->generate(), 'p', $key, $itemKey);
-        $this->send($request);
-
-        if (isset($this->data[$request->getId()])) {
-            return $this->data[$request->getId()];
-        }
-
-        if ($this->wait($request->getId())) {
-            $response = $this->data[$request->getId()];
-            unset($this->data[$request->getId()]);
-            return $response;
-        }
-
-        throw new Exception('1');
+        return $this->makeQuery($key, 'p', $itemKey);
     }
 
     public function pull(string $key): Response {
-        $request = new Request($this->idGenerator->generate(), 'u', $key, '');
-        $this->send($request);
-
-         if (isset($this->data[$request->getId()])) {
-             return $this->data[$request->getId()];
-         }
-
-         if ($this->wait($request->getId())) {
-             $response = $this->data[$request->getId()];
-             unset($this->data[$request->getId()]);
-             return $response;
-         }
-
-         throw new Exception('1');
+        return $this->makeQuery($key, 'u');
     }
 
     private function wait(string $id): bool
@@ -99,6 +65,9 @@ class Client {
         return false;
     }
 
+    /**
+     * @throws BadOpcodeException
+     */
     private function send(Request $request): void
     {
         $this->connection->send($request->asString());
@@ -107,29 +76,31 @@ class Client {
     private function getResponse(string $responseString): Response
     {
         $rBody = json_decode($responseString, true);
-        $response = Response::createFromArray($rBody);
-        return $response;
+        return Response::createFromArray($rBody);
     }
 
-    /**
-     * @throws Exception
-     */
-    private function makeQuery(string $key, string $method): Response
+    private function makeQuery(string $key, string $method, string $value = ''): Response
     {
-        $request = new Request($this->idGenerator->generate(), $method, $key, '');
-        $this->send($request);
+        $request = new Request($this->idGenerator->generate(), $method, $key, $value);
 
-        if (isset($this->data[$request->getId()])) {
-            return $this->data[$request->getId()];
+        try {
+            $this->send($request);
+
+            if (isset($this->data[$request->getId()])) {
+                return $this->data[$request->getId()];
+            }
+
+            if ($this->wait($request->getId())) {
+                $response = $this->data[$request->getId()];
+                unset($this->data[$request->getId()]);
+                return $response;
+            }
+        } catch (Exception $e) {
+            return Response::createError($request->getId(), $e->getMessage());
         }
 
-        if ($this->wait($request->getId())) {
-            $response = $this->data[$request->getId()];
-            unset($this->data[$request->getId()]);
-            return $response;
-        }
 
-        throw new Exception('1');
+        return Response::createError($request->getId(), 'Empty response');
     }
 
 }
